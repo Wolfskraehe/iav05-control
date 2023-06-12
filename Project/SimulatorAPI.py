@@ -879,14 +879,26 @@ def game_loop(args):
         ###############################
         
         # TODO Create throttle PID constants.
+        throttle_Kp = 0.2
+        throttle_Ki = 0.0
+        throttle_Kd = 0.1
+        throttle_output_min = -1.0
+        throttle_output_max = 1.0
+
 
         # TODO Initialize controller class
-        throttle_controller = None
+        throttle_controller = PIDController(throttle_Kp, throttle_Ki, throttle_Kd, throttle_output_min, throttle_output_max)
         
         # TODO Create steering PID constants.
+        steer_Kp = 0.1
+        steer_Ki = 0.0
+        steer_Kd = 0.05
+        steer_output_min = -1.2
+        steer_output_max = 1.2
 
         # TODO Initialize controller class.
-        steer_controller = None
+        steer_controller = PIDController(steer_Kp, steer_Ki, steer_Kd, steer_output_min, steer_output_max)
+
         
         i_data = None
         s_data = None
@@ -916,6 +928,7 @@ def game_loop(args):
 
                 x_points = [point.location.x for point in way_points]
                 y_points = [point.location.y for point in way_points]
+                yaw = way_points[0].rotation.yaw * math.pi / 180
                 waypoint_x, waypoint_y, waypoint_t, waypoint_j = world.get_waypoint(x_points[-1], y_points[-1])
                 real_v = world.player.get_velocity()
                 velocity = math.sqrt(real_v.x**2 + real_v.y**2)
@@ -925,9 +938,8 @@ def game_loop(args):
                 location_x = t.location.x
                 location_y = t.location.y
                 location_z = t.location.z
-                yaw = np.deg2rad(t.rotation.yaw)
 
-                i_data = {'traj_x': x_points, 'traj_y': y_points, 'traj_v': v_points ,'yaw': yaw, "velocity": velocity, 'time': sim_time, 'waypoint_x': waypoint_x, 'waypoint_y': waypoint_y, 'waypoint_t': waypoint_t, 'waypoint_j': waypoint_j, 'tl_state': _tl_state, 'obst_x': obst_x, 'obst_y': obst_y, 'location_x': location_x, 'location_y': location_y, 'location_z': location_z }
+                i_data = {'traj_x': x_points, 'traj_y': y_points, 'traj_v': v_points ,'yaw': _prev_yaw, "velocity": velocity, 'time': sim_time, 'waypoint_x': waypoint_x, 'waypoint_y': waypoint_y, 'waypoint_t': waypoint_t, 'waypoint_j': waypoint_j, 'tl_state': _tl_state, 'obst_x': obst_x, 'obst_y': obst_y, 'location_x': location_x, 'location_y': location_y, 'location_z': location_z }
                 s_data = get_paths(path_planner, i_data)
                 s_data = get_control(steer_controller, throttle_controller, s_data)
 
@@ -1053,12 +1065,12 @@ def get_control(steer_controller : PIDController, throttle_controller : PIDContr
     # you can access the desired trajectory wih xt_points and yt_points. 
     # you can also use the function angle_between_points(x1,y1,x2,y2) to 
     # calculate the angle between two points.
-    desired_heading = 0
-    steer_error = 0
+    desired_heading = angle_between_points(x_position, y_position, xt_points[-1], yt_points[-1])
+    steer_error = desired_heading - yaw
 
     # TODO obtain the steer command from the controller. Use the get_control_command() method
     # from the appropiate controller.
-    steer_command = 0
+    steer_command = steer_controller.get_control_command(steer_error, dt)
 
     #####################################
     ###### Throttle Control #############
@@ -1066,12 +1078,12 @@ def get_control(steer_controller : PIDController, throttle_controller : PIDContr
     
     # TODO calculate the throttle error from the position and the desired speed.
     # you can get the desired speed from the vt_points array.
-    desired_v = 0
-    throttle_error  = 0
+    desired_v = vt_points[-1]
+    throttle_error  = desired_v - velocity
 
     # TODO obtain the throtle command from the controller. Use the get_control_command() method
     # from the appropiate controller.
-    throttle = 0
+    throttle = throttle_controller.get_control_command(throttle_error, dt)
 
     if throttle > 0.0:
         throttle_command = throttle
