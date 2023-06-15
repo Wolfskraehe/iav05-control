@@ -38,17 +38,21 @@ class PIDController:
         # your variables as you see fit.
 
         # Constants
+        
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
 
         # Limits
-        self.output_min = output_min
         self.output_max = output_max
-
+        self.output_min = output_min
+        
         # relevant errors
-        self.prev_error = 0
-        self.acummulative_error = 0
+
+        self.prev_error = 0.0
+        self.acummulative_error = 0.0
+
+        
     
     def get_control_command(self, current_error: float, dt:float)-> float:
         """
@@ -64,7 +68,7 @@ class PIDController:
         # TODO Calculate control command, remember to cap your control command
         # in the range of [-output_max, output_max]
         
-        if dt > 0.001:
+        if dt > 0.00:
             derivative_term = (current_error - self.prev_error)/dt
         else:
             derivative_term = 0.0
@@ -72,5 +76,10 @@ class PIDController:
         self.acummulative_error += current_error*dt
         self.prev_error = current_error
         command = self.Kp*current_error + self.Ki*self.acummulative_error + self.Kd*derivative_term
-        #return max(min(command, self.output_max), self.output_min)
-        return min(max(command, -self.output_max), self.output_max)
+        if command > self.output_max:
+            return self.output_max
+        elif command < self.output_min:
+            return self.output_min
+        else:
+            return command
+        # return max(min(command, self.output_max), self.output_min)
