@@ -680,7 +680,7 @@ class CameraManager(object):
         self.surface = None
         self._parent = parent_actor
         self.hud = hud
-        self.recording = False
+        self.recording = True
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         Attachment = carla.AttachmentType
         self._camera_transforms = [
@@ -881,7 +881,7 @@ def game_loop(args):
         # TODO Create throttle PID constants.
         KP_THROTTLE = 0.15
         KI_THROTTLE = 0.0001
-        KD_THROTTLE = 0.09
+        KD_THROTTLE = 0.01
         MAX_THROTTLE = 1.0
         MIN_THROTTLE = -1.0
 
@@ -889,9 +889,9 @@ def game_loop(args):
         throttle_controller = PIDController(KP_THROTTLE, KI_THROTTLE, KD_THROTTLE, MIN_THROTTLE, MAX_THROTTLE)
         
         # TODO Create steering PID constants.
-        KP_STEER = 0.4
-        KI_STEER = 0.0011
-        KD_STEER = 0.5
+        KP_STEER = 0.3
+        KI_STEER = 0.01
+        KD_STEER = 0.001
         MAX_STEER = 1.2
         MIN_STEER = -1.2
 
@@ -1066,7 +1066,7 @@ def get_control(steer_controller : PIDController, throttle_controller : PIDContr
     # you can also use the function angle_between_points(x1,y1,x2,y2) to 
     # calculate the angle between two points.
 
-# code section to get closest point to x_pos and y_pos from desired trajectory
+# Eculedian distance to calculate closest point index from desired trajectory to current vehicle poistion
     closest_point_idx = -1
     min_dist = float('inf')
     for i in range(len(xt_points)):
@@ -1076,16 +1076,22 @@ def get_control(steer_controller : PIDController, throttle_controller : PIDContr
             min_dist = dist
      
             closest_point_idx = i
-    print(closest_point_idx, len(xt_points))
-
+   
+    #heading angle using trajectory and vehicle poistion
     desired_heading = angle_between_points(x_position, y_position, xt_points[closest_point_idx ], yt_points[closest_point_idx ])
+
+    #steering error
     steer_error = desired_heading - yaw
 
-
-
-    # TODO obtain the steer command from the controller. Use the get_control_command() method
-    # from the appropiate controller.
     steer_command = steer_controller.get_control_command(steer_error, dt)
+
+    '''
+
+    This error represents the deviation from the desired heading. The steering error is used as an 
+    input to the steering controller's get_control_command method, which calculates the appropriate control command based on the error and the time difference (dt) since the last control command.
+    The controller gives us the steer command to minimize this error.
+
+    '''
 
     #####################################
     ###### Throttle Control #############
@@ -1096,7 +1102,17 @@ def get_control(steer_controller : PIDController, throttle_controller : PIDContr
     
     #get the desired speed which is the velocity of the closest point
     desired_v = vt_points[closest_point_idx]
+
+    #throttle error
     throttle_error  = desired_v - velocity
+
+    '''
+
+    The throttle error represents the deviation from the desired speed. 
+    The throttle error is then passed to the throttle controller's get_control_command method, which computes the control command for throttle based on the error and dt.\
+    The controller gives us throttle the command to minimize this error.
+
+    '''
 
     # TODO obtain the throtle command from the controller. Use the get_control_command() method
     # from the appropiate controller.
